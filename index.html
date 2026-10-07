@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бронирование билетов КВН — ГДК Строитель</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: #0a0516 url('bg.png') no-repeat center center fixed; 
+            background-size: cover;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 25px; 
+            color: #f3f4f6;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .large-glare {
+            position: fixed;
+            right: -15%;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 65vw;
+            height: 65vw;
+            max-width: 900px;
+            max-height: 900px;
+            background: url('logo_white.png') no-repeat center center;
+            background-size: contain;
+            opacity: 0.12;
+            mix-blend-mode: screen;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .floating-logo {
+            position: fixed;
+            background: url('logo_metal.png') no-repeat center center;
+            background-size: contain;
+            pointer-events: none;
+            z-index: 2;
+            animation: floatRotation 12s infinite ease-in-out;
+        }
+        .layer-deep { width: 100px; height: 100px; opacity: 0.2; filter: blur(4px); animation-duration: 18s; }
+        .layer-mid { width: 160px; height: 160px; opacity: 0.4; filter: blur(1px); animation-duration: 14s; }
+        .layer-front { width: 220px; height: 220px; opacity: 0.6; filter: drop-shadow(0 20px 30px rgba(0,0,0,0.7)); animation-duration: 10s; }
+
+        @keyframes floatRotation {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(8deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        .card { 
+            background: rgba(20, 10, 35, 0.65); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px; 
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); 
+            padding: 35px; 
+            width: 100%; 
+            max-width: 1050px; 
+            text-align: center; 
+            position: relative;
+            z-index: 10;
+        }
+
+        .welcome-title { margin: 0 0 20px 0; font-size: 28px; font-weight: 800; line-height: 1.3; background: linear-gradient(135deg, #fff 0%, #a78bfa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .welcome-subtitle { font-size: 18px; font-weight: 700; color: #c084fc; margin: 25px 0 15px 0; text-align: left; border-left: 3px solid #8b5cf6; padding-left: 10px; }
+        
+        .stage { width: 40%; background: linear-gradient(90deg, rgba(167,139,250,0.2) 0%, rgba(139,92,246,0.6) 50%, rgba(167,139,250,0.2) 100%); color: white; margin: 25px auto 15px auto; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: bold; letter-spacing: 5px; border: 1px solid rgba(167,139,250,0.3); box-shadow: 0 0 20px rgba(139,92,246,0.3); }
+        
+        .hall-container { overflow-x: auto; padding: 10px 0; margin-bottom: 20px; }
+        .hall { display: grid; grid-template-columns: repeat(26, minmax(31px, 1fr)); gap: 5px; min-width: 860px; }
+        
+        .seat { aspect-ratio: 1.1; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; font-size: 9px; font-weight: bold; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); padding: 2px; }
+        .seat:active { transform: scale(0.92); }
+        
+        .seat-row-text { font-size: 7px; opacity: 0.7; text-transform: uppercase; margin-bottom: 1px; }
+        .seat-num-text { font-size: 11px; font-weight: 800; }
+        
+        .free { background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); color: #10b981; } 
+        .free:hover { background: #10b981; color: white; transform: scale(1.1); box-shadow: 0 0 12px rgba(16,185,129,0.5); }
+        .selected { background: #3b82f6; border-color: #3b82f6; color: white; box-shadow: 0 0 15px rgba(59,130,246,0.6); transform: scale(1.05); } 
+        .reserved { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: #ef4444; cursor: not-allowed; opacity: 0.4; } 
+        .booked { background: rgba(124, 58, 237, 0.2); border-color: rgba(124, 58, 237, 0.4); color: #c084fc; cursor: not-allowed; opacity: 0.4; } 
+        
+        .aisle { background: transparent; pointer-events: none; } 
+        .horizontal-walkway { grid-column: span 26; height: 24px; background: transparent; pointer-events: none; }
+        
+        .legend { display: flex; justify-content: center; gap: 24px; font-size: 13px; margin-bottom: 30px; color: #9ca3af; }
+        .leg-item { display: flex; align-items: center; gap: 8px; }
+        .box { width: 14px; height: 14px; border-radius: 4px; border: 1px solid transparent; }
+        .box.b-free { background: rgba(16, 185, 129, 0.2); border-color: #10b981; }
+        .box.b-selected { background: #3b82f6; }
+        .box.b-reserved { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; }
+        .box.b-booked { background: rgba(124, 58, 237, 0.2); border-color: #c084fc; }
+        
+        .form-row { display: flex; gap: 16px; max-width: 700px; margin: 25px auto 16px auto; text-align: left; }
+        .form-group { flex: 1; }
+        label { display: block; font-size: 10px; font-weight: 700; color: #a78bfa; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 1px; }
+        input { width: 100%; box-sizing: border-box; padding: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; font-size: 14px; color: white; outline: none; transition: all 0.2s; }
+        input:focus { border-color: #8b5cf6; background: rgba(255,255,255,0.08); box-shadow: 0 0 10px rgba(139,92,246,0.2); }
+        
+        .btn { width: 100%; max-width: 340px; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: bold; margin-top: 10px; box-shadow: 0 4px 15px rgba(109,40,217,0.4); transition: all 0.2s; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139,92,246,0.6); }
+        .btn:active { transform: translateY(0); }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(5, 2, 10, 0.8); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+        .modal { background: rgba(25, 15, 45, 0.95); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 30px; width: 100%; max-width: 300px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); text-align: center; }
+        .code-input { text-align: center; font-size: 22px; font-weight: bold; letter-spacing: 4px; padding: 12px; width: 90%; margin-bottom: 15px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="large-glare"></div>
+
+    <div class="floating-logo layer-deep" style="top: 15%; left: 8%;"></div>
+    <div class="floating-logo layer-mid" style="top: 65%; left: 4%;"></div>
+    <div class="floating-logo layer-front" style="top: 40%; left: -5%;"></div>
+
+    <div class="floating-logo layer-deep" style="top: 75%; right: 5%;"></div>
+    <div class="floating-logo layer-mid" style="top: 10%; right: 10%;"></div>
+    <div class="floating-logo layer-front" style="top: 50%; right: -6%; animation-delay: -3s;"></div>
+
+    <div class="card">
+<!-- СЕКЦИЯ С АФИШЕЙ И КУАР-КОДОМ -->
+<!-- СЕКЦИЯ С АФИШЕЙ И КУАР-КОДОМ -->
+<div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 50px; margin-bottom: 40px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 20px; padding: 35px;">
+  
+  <!-- Блок Афиши -->
+  <div style="flex: 1; min-width: 300px; max-width: 380px; text-align: center;">
+    <img src="poster.png" alt="Афиша КВН" style="width: 100%; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+  </div>
+
+  <!-- Блок Информации -->
+  <div style="flex: 1; min-width: 280px; max-width: 340px; display: flex; flex-direction: column; align-items: center; gap: 25px;">
+    
+    <!-- Заголовок соц.сетей как ссылка (меняет прозрачность при наведении) -->
+    <a href="https://taplink.cc/oml_kvn" target="_blank" style="text-decoration: none; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+      <h3 style="margin: 0; font-size: 20px; color: #fff; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: linear-gradient(135deg, #fff 0%, #a78bfa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; cursor: pointer;">
+        Наши соц.сети
+      </h3>
+    </a>
+    
+    <!-- QR-код как ссылка (слегка приподнимается при наведении для интерактивности) -->
+    <a href="https://taplink.cc/oml_kvn" target="_blank" style="text-decoration: none; display: block; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 5px 25px rgba(139,92,246,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 0 20px rgba(139,92,246,0.3)'">
+      <div style="background: #110a26; border: 2px solid #8b5cf6; padding: 15px; border-radius: 20px; width: 190px; height: 190px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; cursor: pointer;">
+        <img src="qr_social.png" alt="QR-код" style="width: 100%; height: 100%; object-fit: contain;">
+      </div>
+    </a>
+    
+    <!-- Логотип Лиги КВН -->
+    <div style="width: 190px; height: 190px; overflow: hidden; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+      <img src="league_logo.png" alt="Логотип Лиги КВН" style="width: 100%; height: 100%; object-fit: contain; border-radius: 16px;">
+    </div>
+
+  </div>
+</div>
+<!-- КОНЕЦ СЕКЦИИ -->
+
+<div style="margin-bottom: 35px; text-align: center;">
+  <h1 style="margin: 0; font-size: clamp(36px, 6vw, 68px); font-weight: 900; line-height: 0.9; text-transform: uppercase; background: linear-gradient(135deg, #fff 30%, #a78bfa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -1px;">
+    Бронирование билетов
+  </h1>
+  <p style="margin: 5px 0 0 0; font-size: clamp(16px, 2.5vw, 24px); font-weight: 600; color: #a78bfa; opacity: 0.9;">
+    на игры ОМЛ КВН теперь доступно онлайн!
+  </p>
+</div>
+        <!-- ИНСТРУКЦИЯ В ВИДЕ КАРТОЧЕК -->
+<div style="background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255,255,255,0.03); border-radius: 24px; padding: 30px; margin-bottom: 30px;">
+  
+  <h2 class="welcome-subtitle" style="margin: 0 0 25px 0; font-size: 22px;">Как это работает?</h2>
+  
+  <!-- Сетка Grid на 5 одинаковых колонок -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 25px;">
+    
+    <!-- Шаг 1 -->
+    <div style="background: rgba(139, 92, 246, 0.04); border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 16px; padding: 22px; text-align: left; display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+      <div style="font-size: 15px; font-weight: 800; color: #c084fc; text-transform: uppercase; letter-spacing: 1px;">Шаг 1</div>
+      <div style="font-size: 16px; font-weight: 700; color: #fff; line-height: 1.2;">Выберите ряд и место на представленной схеме.</div>
+      <div style="font-size: 13px; color: #d1d5db; line-height: 1.4;">Свободные места подсвечены зеленым цветом, все остальные цвета указывают на то, что место занято. Выбирайте не больше трех мест на одно имя.</div>
+    </div>
+
+    <!-- Шаг 2 -->
+    <div style="background: rgba(139, 92, 246, 0.04); border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 16px; padding: 22px; text-align: left; display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+      <div style="font-size: 15px; font-weight: 800; color: #c084fc; text-transform: uppercase; letter-spacing: 1px;">Шаг 2</div>
+      <div style="font-size: 16px; font-weight: 700; color: #fff; line-height: 1.2;">Введите Ваше Имя, Фамилию, Номер телефона/ссылку на страницу ВК в специальном поле ниже схемы.</div>
+      <div style="font-size: 13px; color: #d1d5db; line-height: 1.4;">Это позволит Нам связаться с Вами в преддверии игры и передать билеты очно.</div>
+    </div>
+
+    <!-- Шаг 3 -->
+    <div style="background: rgba(139, 92, 246, 0.04); border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 16px; padding: 22px; text-align: left; display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+      <div style="font-size: 15px; font-weight: 800; color: #c084fc; text-transform: uppercase; letter-spacing: 1px;">Шаг 3</div>
+      <div style="font-size: 16px; font-weight: 700; color: #fff; line-height: 1.2;">Введите свой E-mail.</div>
+      <div style="font-size: 13px; color: #d1d5db; line-height: 1.4;">Это нужно, чтобы мы удостоверились, что вы - настоящий человек, а также отследили количество ваших билетов.</div>
+    </div>
+
+    <!-- Шаг 4 -->
+    <div style="background: rgba(139, 92, 246, 0.04); border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 16px; padding: 22px; text-align: left; display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+      <div style="font-size: 15px; font-weight: 800; color: #c084fc; text-transform: uppercase; letter-spacing: 1px;">Шаг 4</div>
+      <div style="font-size: 16px; font-weight: 700; color: #fff; line-height: 1.2;">Дождитесь кода подтверждения.</div>
+      <div style="font-size: 13px; color: #d1d5db; line-height: 1.4;">Он придет на вашу почту. После того, как вы его введёте, информация о вашей брони попадет к Нам, и эти места будут закреплены за вами!</div>
+    </div>
+
+    <!-- Шаг 5 -->
+    <div style="background: rgba(139, 92, 246, 0.04); border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 16px; padding: 22px; text-align: left; display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+      <div style="font-size: 15px; font-weight: 800; color: #c084fc; text-transform: uppercase; letter-spacing: 1px;">Шаг 5</div>
+      <div style="font-size: 16px; font-weight: 700; color: #fff; line-height: 1.2;">С вами свяжется администратор за несколько дней до игры и договорится о встрече, чтобы передать билеты.</div>
+      <div style="font-size: 13px; color: #d1d5db; line-height: 1.4;">Увидимся на игре!</div>
+    </div>
+
+  </div>
+
+  <!-- ОФОРМЛЕННОЕ ПРИМЕЧАНИЕ -->
+  <div style="border-left: 3px solid #c084fc; background: rgba(239, 68, 68, 0.03); padding: 14px 18px; font-size: 14px; line-height: 1.5; color: #c084fc; text-align: justify; border-radius: 0 12px 12px 0;">
+    <span style="font-weight: 800; color: #c084fc; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 6px;">Примечание:</span>
+    Невыкупленные билеты за несколько часов до игры превратятся в свободные места, и ваша бронь сгорит. Для выкупа билетов с Вами сам свяжется администратор.
+  </div>
+
+</div>
+
+
+        <hr style="margin: 30px 0; border: 0; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 0%);">
+        <h3 style="margin: 0 0 20px 0; font-size: 22px; font-weight: 700; color: #fff;">Схема зала ГДК «Строитель»</h3>
+
+        <div class="hall-container">
+            <div class="hall" id="hall">Загрузка схемы зала...</div>
+        </div>
+
+        <div class="stage">СЦЕНА</div>
+        
+        <div class="legend">
+            <div class="leg-item"><div class="box b-free"></div> Свободно</div>
+            <div class="leg-item"><div class="box b-selected"></div> Выбрано</div>
+            <div class="leg-item"><div class="box b-reserved"></div> Бронь</div>
+            <div class="leg-item"><div class="box b-booked"></div> Выкуплено</div>
+        </div>
+
+        <div id="actionBox">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Ваше Имя и Фамилия</label>
+                    <input type="text" id="userName" placeholder="Иван Иванов">
+                </div>
+                <div class="form-group">
+                    <label>Телефон / Ссылка на ВК</label>
+                    <input type="text" id="userContact" placeholder="+7 (999) 000-00-00">
+                </div>
+                <div class="form-group">
+                    <label>Email для получения кода</label>
+                    <input type="email" id="userEmail" placeholder="example@mail.ru">
+                </div>
+            </div>
+            <button onclick="startBooking()" id="submitBtn" class="btn">Забронировать места</button>
+        </div>
+    </div>
+
+    <div id="codeModal" class="modal-overlay">
+        <div class="modal">
+            <h3 style="margin: 0 0 8px 0; font-size: 19px; font-weight: 700;">Подтверждение</h3>
+            <p style="font-size: 12px; color: #9ca3af; margin: 0 0 20px 0;">Введите 4-значный код из письма или код распространителя:</p>
+            <input type="text" id="verificationCode" placeholder="0000" class="code-input">
+            <button onclick="confirmBooking()" class="btn" style="background: linear-gradient(135deg, #10b981 0%, #047857 100%); margin-top: 0; box-shadow: 0 4px 12px rgba(16,185,129,0.3);">Подтвердить бронь</button>
+            <p onclick="closeModal()" style="font-size: 12px; color: #6b7280; text-decoration: underline; cursor: pointer; margin: 16px 0 0 0;" onmouseover="this.style.color='#9ca3af'" onmouseout="this.style.color='#6b7280'">Отмена</p>
+        </div>
+    </div>
+
+    <script>
+        // ВСТАВЬ СЮДА СВОЮ ССЫЛКУ ИЗ GOOGLE APPS СCRIPT В КАВЫЧКАХ
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyk59EFQtl94wG5XPhKldvEIltOegZet9NGeCxqefgdeAcqLUwsjH_1_Bzdr001hJEA/exec'; 
+
+        let selectedSeats = [];
+        let currentBookingId = null;
+
+        async function loadSeats() {
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const seats = await response.json();
+                const hall = document.getElementById('hall');
+                hall.innerHTML = '';
+                
+                const seatsMap = new Map();
+                seats.forEach(s => { seatsMap.set(s.name, s); });
+                
+                for (let r = 15; r >= 1; r--) {
+                    if (r === 8) {
+                        const walkway = document.createElement('div');
+                        walkway.className = 'horizontal-walkway';
+                        hall.appendChild(walkway);
+                    }
+                    
+                    let totalCols = 26; 
+                    for (let c = 1; c <= totalCols; c++) {
+                        if (r <= 13) {
+                            if (c === 13 || c === 14) { 
+                                createAisle(hall);
+                                continue;
+                            }
+                            let seatNum = c;
+                            if (c > 14) seatNum = c - 2;
+                            renderSeatButton(hall, seatsMap, r, seatNum);
+                        } else {
+                            if (c > 8 && c <= 16) { 
+                                createAisle(hall);
+                                continue;
+                            }
+                            let seatNum = c <= 8 ? c : c - 8;
+                            renderSeatButton(hall, seatsMap, r, seatNum);
+                        }
+                    }
+                }
+            } catch (e) {
+                document.getElementById('hall').innerHTML = '<div style="color: #ef4444; font-size: 14px; grid-column: span 26; padding: 16px 0;">Ошибка загрузки зала. Проверьте подключение.</div>';
+            }
+        }
+
+        function createAisle(parent) {
+            const div = document.createElement('div');
+            div.className = 'aisle';
+            parent.appendChild(div);
+        }
+
+        function renderSeatButton(parent, seatsMap, row, seatNum) {
+            const seatKey = `Ряд ${row}, Место ${seatNum}`;
+            const seat = seatsMap.get(seatKey);
+            
+            if (!seat) {
+                createAisle(parent);
+                return;
+            }
+            
+            const btn = document.createElement('button');
+            btn.className = `seat ${seat.status}`;
+            btn.title = `Ряд ${row}, Место ${seatNum}`;
+            btn.innerHTML = `<span class="seat-row-text">Р.${row}</span><span class="seat-num-text">М.${seatNum}</span>`;
+            
+            if (seat.status === 'free') {
+    btn.onclick = () => {
+        if (selectedSeats.includes(seat.id)) {
+            selectedSeats = selectedSeats.filter(id => id !== seat.id);
+            btn.className = 'seat free';
+        } else {
+            if (selectedSeats.length >= 4) {
+                alert('Вы не можете забронировать более 4 мест на одно имя!');
+                return;
+            }
+            selectedSeats.push(seat.id);
+            btn.className = 'seat selected';
+        }
+    };
+}
+
+            parent.appendChild(btn);
+        }
+
+        let generatedCode = null; // Будем хранить код здесь для сверки
+
+async function startBooking() {
+    if (selectedSeats.length === 0) return alert('Пожалуйста, выберите места на схеме!');
+    
+    const name = document.getElementById('userName').value.trim();
+    const contact = document.getElementById('userContact').value.trim();
+    const email = document.getElementById('userEmail').value.trim();
+    
+    if(!name || !contact || !email) return alert('Пожалуйста, заполните все поля!');
+    
+    const btn = document.getElementById('submitBtn');
+    btn.innerText = 'Отправка...';
+    btn.disabled = true;
+
+    // Генерируем случайный код и ID бронирования ПЕРЕД отправкой запроса
+    generatedCode = Math.floor(1000 + Math.random() * 9000).toString();
+    currentBookingId = new Date().getTime(); 
+    
+    try {
+        await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ 
+                action: 'book', 
+                name, 
+                contact, 
+                email, 
+                code: generatedCode, 
+                seatIds: selectedSeats,
+                bookingId: currentBookingId // <-- Передаем этот ID бэкенду, чтобы он запомнил строчку
+            })
+        });
+        
+        btn.innerText = 'Забронировать места';
+        btn.disabled = false;
+        
+        document.getElementById('verificationCode').value = '';
+        document.getElementById('codeModal').style.display = 'flex';
+        
+        console.log("Код подтверждения для проверки:", generatedCode);
+        
+    } catch (e) {
+        console.error(e);
+        alert('Ошибка отправки данных.');
+        btn.innerText = 'Забронировать места';
+        btn.disabled = false;
+    }
+}
+
+async function confirmBooking() {
+    const userCode = document.getElementById('verificationCode').value.trim();
+    if(!userCode) return alert('Введите код!');
+    
+    // Проверка кода: если введен мастер-код или сгенерированный код совпал
+    if (userCode === "КВН2026" || userCode === generatedCode) {
+        try {
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ 
+                    action: 'verify', 
+                    bookingId: currentBookingId, 
+                    code: userCode 
+                })
+            });
+            
+            document.getElementById('codeModal').style.display = 'none';
+            document.getElementById('actionBox').innerHTML = `
+                <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #34d399; padding: 16px; border-radius: 12px; font-size: 14px; font-weight: 500; text-align: center; box-shadow: 0 0 15px rgba(16,185,129,0.2);">
+                    🎉 Запрос обработан! Зал автоматически обновится через 2 секунды.
+                </div>
+            `;
+            selectedSeats = [];
+            setTimeout(loadSeats, 2000);
+        } catch (e) {
+            alert('Ошибка проверки на сервере.');
+        }
+    } else {
+        alert('Неверный код подтверждения!');
+    }
+}
+
+        function closeModal() {
+            document.getElementById('codeModal').style.display = 'none';
+        }
+
+        // Легкий параллакс эмблем при движении мыши
+        document.addEventListener('mousemove', (e) => {
+            const amount = 20;
+            const x = (e.clientX / window.innerWidth - 0.5) * amount;
+            const y = (e.clientY / window.innerHeight - 0.5) * amount;
+
+            document.querySelectorAll('.layer-front').forEach(el => {
+                el.style.transform = `translate(${x}px, ${y - 15}px) rotate(8deg)`;
+            });
+            document.querySelectorAll('.layer-mid').forEach(el => {
+                el.style.transform = `translate(${x * 0.5}px, ${y * 0.5 - 15}px) rotate(8deg)`;
+            });
+        });
+
+        loadSeats();
+    </script>
+</body>
+</html>
