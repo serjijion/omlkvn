@@ -346,15 +346,12 @@
             selectedSeats = selectedSeats.filter(id => id !== seat.id);
             btn.className = 'seat free';
         } else {
-            if (selectedSeats.length >= 4) {
-                alert('Вы не можете забронировать более 4 мест на одно имя!');
-                return;
-            }
             selectedSeats.push(seat.id);
             btn.className = 'seat selected';
         }
     };
 }
+
 
             parent.appendChild(btn);
         }
